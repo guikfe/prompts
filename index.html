@@ -40,7 +40,6 @@
             width: 100%;
             height: 100%;
             z-index: -1;
-            /* Coloca o canvas atrás de todo o conteúdo */
         }
 
         /* Custom Scrollbar */
@@ -124,7 +123,7 @@
             opacity: 1;
         }
 
-        /* Page Load Animation */
+        /* Page Load/Filter Animation */
         .prompt-card {
             opacity: 0;
             transform: translateY(20px);
@@ -137,15 +136,25 @@
                 transform: translateY(0);
             }
         }
+
+        /* Filter Pill Styles */
+        .filter-pill {
+            transition: all 0.2s ease-in-out;
+        }
+
+        .filter-pill.active {
+            background-color: #0891b2;
+            /* cyan-600 */
+            color: #ffffff;
+            box-shadow: 0 0 15px #0891b270;
+        }
     </style>
 </head>
 
 <body class="text-gray-300 antialiased">
 
-    <!-- Canvas para a animação de partículas -->
     <canvas id="particle-canvas"></canvas>
 
-    <!-- Cabeçalho Principal -->
     <header class="p-4 sm:p-6 sticky top-0 z-20">
         <div
             class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4 py-3 px-6 bg-slate-900/50 backdrop-blur-lg border border-slate-700/50 rounded-2xl">
@@ -168,23 +177,26 @@
         </div>
     </header>
 
-    <!-- Grid de Prompts -->
-    <main class="p-4 sm:p-6">
+    <!-- Seção de Filtros por Tag -->
+    <div id="tag-filters" class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-wrap justify-center gap-2">
+        <!-- As pills de filtro serão inseridas aqui pelo JavaScript -->
+    </div>
+
+    <main class="p-4 sm:p-6 pt-0">
         <div id="prompt-grid" class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <!-- Os cards de prompt serão inseridos aqui pelo JavaScript -->
+            <!-- Os cards de prompt serão inseridos aqui -->
         </div>
         <div id="no-results" class="hidden text-center text-slate-400 mt-10">
             <h3 class="text-2xl font-semibold">Nenhum prompt encontrado</h3>
-            <p>Tente uma busca diferente.</p>
+            <p>Tente uma busca ou filtro diferente.</p>
         </div>
     </main>
 
-    <!-- Modal para Visualização do Prompt Completo -->
+    <!-- Modal -->
     <div id="modal"
         class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-opacity duration-300 opacity-0 pointer-events-none">
         <div id="modal-content"
             class="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl shadow-cyan-500/10 w-full max-w-3xl max-h-[90vh] flex flex-col transform transition-all duration-300 scale-95 opacity-0">
-            <!-- Cabeçalho do Modal -->
             <div class="flex justify-between items-center p-4 border-b border-slate-700/50">
                 <h2 id="modal-title" class="text-xl font-bold gradient-text"></h2>
                 <button id="close-modal-btn"
@@ -196,8 +208,6 @@
                     </svg>
                 </button>
             </div>
-
-            <!-- Corpo do Modal -->
             <div class="p-6 overflow-y-auto">
                 <div class="flex items-center justify-between mb-4">
                     <div class="flex gap-2 p-1 bg-slate-800/50 rounded-lg">
@@ -211,8 +221,6 @@
                     <pre id="modal-text" class="text-slate-300 whitespace-pre-wrap text-sm leading-relaxed"></pre>
                 </div>
             </div>
-
-            <!-- Rodapé do Modal com Ações -->
             <div
                 class="p-4 mt-auto bg-slate-900/50 border-t border-slate-700/50 rounded-b-2xl flex flex-wrap gap-3 justify-end">
                 <button id="modal-copy-btn" class="action-btn-modal bg-cyan-600 hover:bg-cyan-500">
@@ -241,7 +249,6 @@
     </div>
 
     <script>
-        // Mapeamento de tags para cores de brilho
         const tagColors = {
             'produtividade': 'var(--glow-color-blue)',
             'marketing': 'var(--glow-color-pink)',
@@ -249,11 +256,14 @@
             'default': 'var(--glow-color-green)'
         };
 
+        // Tags principais para os filtros. Adicione ou remova conforme necessário.
+        const mainTags = ['Todos', 'AI', 'Produtividade', 'Marketing', 'Estratégia', 'YouTube', 'Desenvolvimento Pessoal', 'Negócios', 'Psicologia', 'Criatividade'];
+
         document.addEventListener('DOMContentLoaded', () => {
-            // --- LÓGICA DA APLICAÇÃO DE PROMPTS ---
             const promptGrid = document.getElementById('prompt-grid');
             const searchInput = document.getElementById('search-input');
             const noResultsDiv = document.getElementById('no-results');
+            const tagFiltersContainer = document.getElementById('tag-filters');
             const modal = document.getElementById('modal');
             const modalTitle = document.getElementById('modal-title');
             const modalText = document.getElementById('modal-text');
@@ -266,6 +276,7 @@
             let allPrompts = []; // Armazenará todos os prompts carregados
             let currentOpenPrompt = null;
             let currentLang = 'pt';
+            let activeTag = 'Todos';
 
             function getGlowColor(tags) {
                 const firstTag = tags[0];
@@ -314,14 +325,37 @@
                 });
             }
 
-            function filterPrompts() {
+            function renderTagFilters() {
+                tagFiltersContainer.innerHTML = '';
+                mainTags.forEach(tag => {
+                    const pill = document.createElement('button');
+                    pill.className = 'filter-pill px-4 py-1.5 text-sm font-semibold text-slate-300 bg-slate-800/50 border border-slate-700 rounded-full hover:bg-slate-700/80';
+                    pill.textContent = tag;
+                    pill.dataset.tag = tag;
+                    if (tag === activeTag) {
+                        pill.classList.add('active');
+                    }
+                    tagFiltersContainer.appendChild(pill);
+                });
+            }
+
+            function updateDisplay() {
+                let filteredByTag = allPrompts;
+                if (activeTag !== 'Todos') {
+                    filteredByTag = allPrompts.filter(p => p.tags.map(t => t.toLowerCase()).includes(activeTag.toLowerCase()));
+                }
+
                 const searchTerm = searchInput.value.toLowerCase().trim();
-                const filtered = allPrompts.filter(p =>
-                    p.title.toLowerCase().includes(searchTerm) ||
-                    p.author.toLowerCase().includes(searchTerm) ||
-                    p.tags.some(tag => tag.toLowerCase().includes(searchTerm))
-                );
-                renderPrompts(filtered);
+                let finalFiltered = filteredByTag;
+                if (searchTerm) {
+                    finalFiltered = filteredByTag.filter(p =>
+                        p.title.toLowerCase().includes(searchTerm) ||
+                        p.author.toLowerCase().includes(searchTerm) ||
+                        p.tags.some(tag => tag.toLowerCase().includes(searchTerm))
+                    );
+                }
+
+                renderPrompts(finalFiltered);
             }
 
             function openModal(id) {
@@ -397,7 +431,6 @@
                 }, 2000);
             }
 
-            // --- FUNÇÃO DE INICIALIZAÇÃO ---
             async function initializeApp() {
                 try {
                     // Carrega os dados do arquivo prompts.json
@@ -412,8 +445,20 @@
                     promptGrid.innerHTML = `<p class="text-center text-red-400 col-span-full">Erro ao carregar prompts. Verifique se o arquivo 'prompts.json' existe no mesmo diretório.</p>`;
                 }
 
-                // Adiciona os event listeners após carregar os dados
-                searchInput.addEventListener('input', filterPrompts);
+                renderTagFilters();
+                updateDisplay();
+
+                searchInput.addEventListener('input', updateDisplay);
+
+                tagFiltersContainer.addEventListener('click', (e) => {
+                    if (e.target.tagName === 'BUTTON') {
+                        activeTag = e.target.dataset.tag;
+                        tagFiltersContainer.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+                        e.target.classList.add('active');
+                        updateDisplay();
+                    }
+                });
+
                 promptGrid.addEventListener('click', (e) => {
                     const button = e.target.closest('button[data-action]');
                     if (!button) return;
