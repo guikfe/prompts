@@ -19,16 +19,17 @@
 
     <style>
         :root {
-            --glow-color-blue: #0ea5e9;
             --glow-color-purple: #a855f7;
-            --glow-color-green: #22c55e;
-            --glow-color-pink: #ec4899;
+            --glow-color-magenta: #d946ef;
+            --glow-color-blue: #38bdf8;
+            --glow-color-green: #8422c5;
+            /* Mantido como fallback */
         }
 
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #020617;
-            /* slate-950 */
+            background-color: #0f172a;
+            /* slate-900 */
             color: #e2e8f0;
             /* slate-200 */
         }
@@ -40,6 +41,7 @@
             width: 100%;
             height: 100%;
             z-index: -1;
+            opacity: 0.7;
         }
 
         /* Custom Scrollbar */
@@ -62,7 +64,7 @@
 
         /* Text with Gradient */
         .gradient-text {
-            background-image: linear-gradient(to right, #67e8f9, #a78bfa);
+            background-image: linear-gradient(to right, var(--glow-color-magenta), var(--glow-color-purple));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -72,13 +74,13 @@
         /* Card Glow Effect */
         .card-container {
             position: relative;
-            background-color: #1e293b60;
-            /* slate-800/40 */
+            background-color: #1e293b90;
+            /* slate-800/60 */
             border-radius: 1rem;
-            border: 1px solid #33415550;
+            border: 1px solid #47556960;
             transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             z-index: 1;
         }
 
@@ -88,17 +90,17 @@
             inset: 0;
             border-radius: 1rem;
             padding: 1px;
-            background: linear-gradient(var(--angle), #334155, #475569);
+            background: linear-gradient(var(--angle), #475569, #334155);
             -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
             -webkit-mask-composite: xor;
             mask-composite: exclude;
             transition: all 0.3s ease;
-            opacity: 0.5;
+            opacity: 0.7;
         }
 
         .card-container:hover:before {
             opacity: 1;
-            background: linear-gradient(var(--angle), var(--glow-color), #a78bfa);
+            background: linear-gradient(var(--angle), var(--glow-color), var(--glow-color-magenta));
         }
 
         @property --angle {
@@ -143,10 +145,10 @@
         }
 
         .filter-pill.active {
-            background-color: #0891b2;
-            /* cyan-600 */
+            background-color: var(--glow-color-purple);
             color: #ffffff;
-            box-shadow: 0 0 15px #0891b270;
+            box-shadow: 0 0 15px #a855f770;
+            border-color: #a855f790;
         }
     </style>
 </head>
@@ -159,11 +161,11 @@
         <div
             class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4 py-3 px-6 bg-slate-900/50 backdrop-blur-lg border border-slate-700/50 rounded-2xl">
             <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight gradient-text">
-                Prompt Stack
+                PROMPT VAULT
             </h1>
             <div class="relative w-full sm:w-auto">
                 <input type="search" id="search-input"
-                    class="w-full sm:w-64 bg-slate-800/80 border border-slate-700 rounded-lg pl-10 pr-4 py-2 focus:ring-2 focus:ring-cyan-500 focus:outline-none transition-all duration-300 placeholder:text-slate-500"
+                    class="w-full sm:w-64 bg-slate-800/80 border border-slate-700 rounded-lg pl-10 pr-4 py-2 focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all duration-300 placeholder:text-slate-500"
                     placeholder="Buscar...">
                 <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
@@ -196,7 +198,7 @@
     <div id="modal"
         class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-opacity duration-300 opacity-0 pointer-events-none">
         <div id="modal-content"
-            class="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl shadow-cyan-500/10 w-full max-w-3xl max-h-[90vh] flex flex-col transform transition-all duration-300 scale-95 opacity-0">
+            class="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl shadow-purple-500/10 w-full max-w-3xl max-h-[90vh] flex flex-col transform transition-all duration-300 scale-95 opacity-0">
             <div class="flex justify-between items-center p-4 border-b border-slate-700/50">
                 <h2 id="modal-title" class="text-xl font-bold gradient-text"></h2>
                 <button id="close-modal-btn"
@@ -223,7 +225,7 @@
             </div>
             <div
                 class="p-4 mt-auto bg-slate-900/50 border-t border-slate-700/50 rounded-b-2xl flex flex-wrap gap-3 justify-end">
-                <button id="modal-copy-btn" class="action-btn-modal bg-cyan-600 hover:bg-cyan-500">
+                <button id="modal-copy-btn" class="action-btn-modal bg-purple-600 hover:bg-purple-500">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -251,12 +253,14 @@
     <script>
         const tagColors = {
             'produtividade': 'var(--glow-color-blue)',
-            'marketing': 'var(--glow-color-pink)',
-            'carreira': 'var(--glow-color-purple)',
+            'marketing': 'var(--glow-color-magenta)',
+            'negócios': 'var(--glow-color-purple)',
+            'ai': 'var(--glow-color-purple)',
+            'youtube': 'var(--glow-color-magenta)',
+            'desenvolvimento pessoal': 'var(--glow-color-blue)',
             'default': 'var(--glow-color-green)'
         };
 
-        // Tags principais para os filtros. Adicione ou remova conforme necessário.
         const mainTags = ['Todos', 'AI', 'Produtividade', 'Marketing', 'Estratégia', 'YouTube', 'Desenvolvimento Pessoal', 'Negócios', 'Psicologia', 'Criatividade'];
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -310,7 +314,7 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                             <span>Visualizar</span>
                         </button>
-                        <button data-action="copy" data-id="${prompt.id}" class="action-btn-card bg-cyan-600 hover:bg-cyan-500">
+                        <button data-action="copy" data-id="${prompt.id}" class="action-btn-card bg-purple-600 hover:bg-purple-500">
                              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                             <span>Copiar</span>
                         </button>
@@ -377,11 +381,11 @@
                 if (!currentOpenPrompt) return;
                 const isPt = currentLang === 'pt';
                 modalText.textContent = isPt ? currentOpenPrompt.text_pt : currentOpenPrompt.text_en;
-                langPtBtn.classList.toggle('bg-cyan-600', isPt);
+                langPtBtn.classList.toggle('bg-purple-600', isPt);
                 langPtBtn.classList.toggle('text-white', isPt);
                 langPtBtn.classList.toggle('text-slate-300', !isPt);
                 langPtBtn.classList.toggle('hover:bg-slate-700', !isPt);
-                langEnBtn.classList.toggle('bg-cyan-600', !isPt);
+                langEnBtn.classList.toggle('bg-purple-600', !isPt);
                 langEnBtn.classList.toggle('text-white', !isPt);
                 langEnBtn.classList.toggle('text-slate-300', isPt);
                 langEnBtn.classList.toggle('hover:bg-slate-700', isPt);
@@ -549,12 +553,12 @@
                 particles = [];
                 let numberOfParticles = (canvas.height * canvas.width) / 9000;
                 for (let i = 0; i < numberOfParticles; i++) {
-                    let size = (Math.random() * 2) + 1;
+                    let size = (Math.random() * 1.5) + 1;
                     let x = (Math.random() * ((innerWidth - size * 2) - (size * 2)) + size * 2);
                     let y = (Math.random() * ((innerHeight - size * 2) - (size * 2)) + size * 2);
-                    let directionX = (Math.random() * .4) - .2;
-                    let directionY = (Math.random() * .4) - .2;
-                    let color = 'rgba(148, 163, 184, 0.5)'; // slate-400 com opacidade
+                    let directionX = (Math.random() * .3) - .15;
+                    let directionY = (Math.random() * .3) - .15;
+                    let color = 'rgba(168, 85, 247, 0.4)'; // purple-500 com opacidade
 
                     particles.push(new Particle(x, y, directionX, directionY, size, color));
                 }
@@ -566,9 +570,9 @@
                     for (let b = a; b < particles.length; b++) {
                         let distance = ((particles[a].x - particles[b].x) * (particles[a].x - particles[b].x))
                             + ((particles[a].y - particles[b].y) * (particles[a].y - particles[b].y));
-                        if (distance < (canvas.width / 7) * (canvas.height / 7)) {
+                        if (distance < (canvas.width / 8) * (canvas.height / 8)) {
                             opacityValue = 1 - (distance / 20000);
-                            ctx.strokeStyle = `rgba(0, 199, 255, ${opacityValue})`; // Cor ciano com opacidade variável
+                            ctx.strokeStyle = `rgba(168, 85, 247, ${opacityValue * 0.5})`; // Cor roxa com opacidade variável
                             ctx.lineWidth = 1;
                             ctx.beginPath();
                             ctx.moveTo(particles[a].x, particles[a].y);
