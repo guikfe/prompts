@@ -241,33 +241,6 @@
     </div>
 
     <script>
-        const promptsData = [
-            {
-                "id": 1,
-                "title": "Especialista em Automação",
-                "author": "@EXM7777",
-                "tags": ["produtividade", "n8n", "automação", "negócios"],
-                "text_en": "You are a **senior n8n automation architect**...",
-                "text_pt": "Você é um **arquiteto sênior de automação n8n**..."
-            },
-            {
-                "id": 2,
-                "title": "Gerador de Ideias de Conteúdo",
-                "author": "@ideacreator",
-                "tags": ["marketing", "conteúdo", "criatividade"],
-                "text_en": "You are a world-class content strategist...",
-                "text_pt": "Você é um estrategista de conteúdo de classe mundial..."
-            },
-            {
-                "id": 3,
-                "title": "Mentor de Carreira em Tech",
-                "author": "@techguide",
-                "tags": ["carreira", "tecnologia", "desenvolvimento"],
-                "text_en": "Act as a career mentor for a software developer...",
-                "text_pt": "Aja como um mentor de carreira para um desenvolvedor de software..."
-            }
-        ];
-
         // Mapeamento de tags para cores de brilho
         const tagColors = {
             'produtividade': 'var(--glow-color-blue)',
@@ -290,6 +263,7 @@
             const modalCopyBtn = document.getElementById('modal-copy-btn');
             const modalChatGptBtn = document.getElementById('modal-chatgpt-btn');
 
+            let allPrompts = []; // Armazenará todos os prompts carregados
             let currentOpenPrompt = null;
             let currentLang = 'pt';
 
@@ -342,7 +316,7 @@
 
             function filterPrompts() {
                 const searchTerm = searchInput.value.toLowerCase().trim();
-                const filtered = promptsData.filter(p =>
+                const filtered = allPrompts.filter(p =>
                     p.title.toLowerCase().includes(searchTerm) ||
                     p.author.toLowerCase().includes(searchTerm) ||
                     p.tags.some(tag => tag.toLowerCase().includes(searchTerm))
@@ -351,7 +325,7 @@
             }
 
             function openModal(id) {
-                currentOpenPrompt = promptsData.find(p => p.id === id);
+                currentOpenPrompt = allPrompts.find(p => p.id === id);
                 if (!currentOpenPrompt) return;
                 modalTitle.textContent = currentOpenPrompt.title;
                 updateModalText();
@@ -380,7 +354,7 @@
             }
 
             function copyPrompt(id, buttonElement) {
-                const promptToCopy = promptsData.find(p => p.id === id);
+                const promptToCopy = allPrompts.find(p => p.id === id);
                 if (!promptToCopy) return;
                 const textToCopy = (currentOpenPrompt && currentOpenPrompt.id === id)
                     ? (currentLang === 'pt' ? promptToCopy.text_pt : promptToCopy.text_en)
@@ -402,7 +376,7 @@
             }
 
             function openInChatGPT(id) {
-                const promptToOpen = promptsData.find(p => p.id === id);
+                const promptToOpen = allPrompts.find(p => p.id === id);
                 if (!promptToOpen) return;
                 const textToOpen = (currentOpenPrompt && currentOpenPrompt.id === id)
                     ? (currentLang === 'pt' ? promptToOpen.text_pt : promptToOpen.text_en)
@@ -423,30 +397,41 @@
                 }, 2000);
             }
 
-            searchInput.addEventListener('input', filterPrompts);
-            promptGrid.addEventListener('click', (e) => {
-                const button = e.target.closest('button[data-action]');
-                if (!button) return;
-                const action = button.dataset.action;
-                const id = parseInt(button.dataset.id, 10);
-                if (action === 'view') openModal(id);
-                if (action === 'copy') copyPrompt(id, button);
-            });
-            closeModalBtn.addEventListener('click', closeModal);
-            modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
-            langPtBtn.addEventListener('click', () => { currentLang = 'pt'; updateModalText(); });
-            langEnBtn.addEventListener('click', () => { currentLang = 'en'; updateModalText(); });
-            modalCopyBtn.addEventListener('click', (e) => { if (currentOpenPrompt) copyPrompt(currentOpenPrompt.id, e.currentTarget); });
-            modalChatGptBtn.addEventListener('click', () => { if (currentOpenPrompt) openInChatGPT(currentOpenPrompt.id); });
-            window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modal.classList.contains('visible')) closeModal(); });
+            // --- FUNÇÃO DE INICIALIZAÇÃO ---
+            async function initializeApp() {
+                try {
+                    // Carrega os dados do arquivo prompts.json
+                    const response = await fetch('prompts.json');
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    allPrompts = await response.json();
+                    renderPrompts(allPrompts);
+                } catch (error) {
+                    console.error("Não foi possível carregar os prompts:", error);
+                    promptGrid.innerHTML = `<p class="text-center text-red-400 col-span-full">Erro ao carregar prompts. Verifique se o arquivo 'prompts.json' existe no mesmo diretório.</p>`;
+                }
 
-            // --- INICIALIZAÇÃO DA APLICAÇÃO DE PROMPTS ---
-            promptsData[1].text_pt = promptsData[1].text_pt || "Texto de exemplo para Gerador de Ideias.";
-            promptsData[1].text_en = promptsData[1].text_en || "Example text for Content Idea Generator.";
-            promptsData[2].text_pt = promptsData[2].text_pt || "Texto de exemplo para Mentor de Carreira.";
-            promptsData[2].text_en = promptsData[2].text_en || "Example text for Tech Career Mentor.";
-            renderPrompts(promptsData);
+                // Adiciona os event listeners após carregar os dados
+                searchInput.addEventListener('input', filterPrompts);
+                promptGrid.addEventListener('click', (e) => {
+                    const button = e.target.closest('button[data-action]');
+                    if (!button) return;
+                    const action = button.dataset.action;
+                    const id = parseInt(button.dataset.id, 10);
+                    if (action === 'view') openModal(id);
+                    if (action === 'copy') copyPrompt(id, button);
+                });
+                closeModalBtn.addEventListener('click', closeModal);
+                modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+                langPtBtn.addEventListener('click', () => { currentLang = 'pt'; updateModalText(); });
+                langEnBtn.addEventListener('click', () => { currentLang = 'en'; updateModalText(); });
+                modalCopyBtn.addEventListener('click', (e) => { if (currentOpenPrompt) copyPrompt(currentOpenPrompt.id, e.currentTarget); });
+                modalChatGptBtn.addEventListener('click', () => { if (currentOpenPrompt) openInChatGPT(currentOpenPrompt.id); });
+                window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modal.classList.contains('visible')) closeModal(); });
+            }
 
+            initializeApp();
 
             // --- LÓGICA DA ANIMAÇÃO DE PARTÍCULAS ---
             const canvas = document.getElementById('particle-canvas');
@@ -499,23 +484,14 @@
                         this.directionY = -this.directionY;
                     }
 
-                    // Interação com o mouse
                     let dx = mouse.x - this.x;
                     let dy = mouse.y - this.y;
                     let distance = Math.sqrt(dx * dx + dy * dy);
                     if (distance < mouse.radius) {
-                        if (mouse.x < this.x && this.x < canvas.width - this.size * 10) {
-                            this.x += 5;
-                        }
-                        if (mouse.x > this.x && this.x > this.size * 10) {
-                            this.x -= 5;
-                        }
-                        if (mouse.y < this.y && this.y < canvas.height - this.size * 10) {
-                            this.y += 5;
-                        }
-                        if (mouse.y > this.y && this.y > this.size * 10) {
-                            this.y -= 5;
-                        }
+                        if (mouse.x < this.x && this.x < canvas.width - this.size * 10) { this.x += 3; }
+                        if (mouse.x > this.x && this.x > this.size * 10) { this.x -= 3; }
+                        if (mouse.y < this.y && this.y < canvas.height - this.size * 10) { this.y += 3; }
+                        if (mouse.y > this.y && this.y > this.size * 10) { this.y -= 3; }
                     }
 
                     this.x += this.directionX;
