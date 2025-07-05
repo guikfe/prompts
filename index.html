@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PromptStack | Repositório de Prompts</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Icons: Lucide -->
+    <script src="https://unpkg.com/lucide-react@latest/dist/lucide-react.js"></script>
+
+    <style>
+        :root {
+            --glow-color-blue: #0ea5e9;
+            --glow-color-purple: #a855f7;
+            --glow-color-green: #22c55e;
+            --glow-color-pink: #ec4899;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #020617;
+            /* slate-950 */
+            color: #e2e8f0;
+            /* slate-200 */
+        }
+
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            /* Coloca o canvas atrás de todo o conteúdo */
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #52525b;
+        }
+
+        /* Text with Gradient */
+        .gradient-text {
+            background-image: linear-gradient(to right, #67e8f9, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            color: transparent;
+        }
+
+        /* Card Glow Effect */
+        .card-container {
+            position: relative;
+            background-color: #1e293b60;
+            /* slate-800/40 */
+            border-radius: 1rem;
+            border: 1px solid #33415550;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            z-index: 1;
+        }
+
+        .card-container:before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: 1rem;
+            padding: 1px;
+            background: linear-gradient(var(--angle), #334155, #475569);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            transition: all 0.3s ease;
+            opacity: 0.5;
+        }
+
+        .card-container:hover:before {
+            opacity: 1;
+            background: linear-gradient(var(--angle), var(--glow-color), #a78bfa);
+        }
+
+        @property --angle {
+            syntax: '<angle>';
+            initial-value: 0deg;
+            inherits: false;
+        }
+
+        @keyframes rotate {
+            to {
+                --angle: 360deg;
+            }
+        }
+
+        .card-container:hover {
+            animation: rotate 4s linear infinite;
+        }
+
+        /* Modal Animation */
+        #modal.visible #modal-content {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+        }
+
+        /* Page Load Animation */
+        .prompt-card {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: card-fade-in 0.5s ease-out forwards;
+        }
+
+        @keyframes card-fade-in {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body class="text-gray-300 antialiased">
+
+    <!-- Canvas para a animação de partículas -->
+    <canvas id="particle-canvas"></canvas>
+
+    <!-- Cabeçalho Principal -->
+    <header class="p-4 sm:p-6 sticky top-0 z-20">
+        <div
+            class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4 py-3 px-6 bg-slate-900/50 backdrop-blur-lg border border-slate-700/50 rounded-2xl">
+            <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight gradient-text">
+                PROMPT VAULT
+            </h1>
+            <div class="relative w-full sm:w-auto">
+                <input type="search" id="search-input"
+                    class="w-full sm:w-64 bg-slate-800/80 border border-slate-700 rounded-lg pl-10 pr-4 py-2 focus:ring-2 focus:ring-cyan-500 focus:outline-none transition-all duration-300 placeholder:text-slate-500"
+                    placeholder="Buscar...">
+                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="text-slate-500">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Grid de Prompts -->
+    <main class="p-4 sm:p-6">
+        <div id="prompt-grid" class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Os cards de prompt serão inseridos aqui pelo JavaScript -->
+        </div>
+        <div id="no-results" class="hidden text-center text-slate-400 mt-10">
+            <h3 class="text-2xl font-semibold">Nenhum prompt encontrado</h3>
+            <p>Tente uma busca diferente.</p>
+        </div>
+    </main>
+
+    <!-- Modal para Visualização do Prompt Completo -->
+    <div id="modal"
+        class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-opacity duration-300 opacity-0 pointer-events-none">
+        <div id="modal-content"
+            class="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl shadow-cyan-500/10 w-full max-w-3xl max-h-[90vh] flex flex-col transform transition-all duration-300 scale-95 opacity-0">
+            <!-- Cabeçalho do Modal -->
+            <div class="flex justify-between items-center p-4 border-b border-slate-700/50">
+                <h2 id="modal-title" class="text-xl font-bold gradient-text"></h2>
+                <button id="close-modal-btn"
+                    class="text-slate-400 hover:text-white transition-transform duration-200 hover:rotate-90">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Corpo do Modal -->
+            <div class="p-6 overflow-y-auto">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex gap-2 p-1 bg-slate-800/50 rounded-lg">
+                        <button id="lang-pt-btn"
+                            class="px-3 py-1 text-sm font-semibold rounded-md transition-colors">Português</button>
+                        <button id="lang-en-btn"
+                            class="px-3 py-1 text-sm font-semibold rounded-md transition-colors">English</button>
+                    </div>
+                </div>
+                <div id="modal-text-container" class="bg-slate-950/50 p-4 rounded-lg border border-slate-800">
+                    <pre id="modal-text" class="text-slate-300 whitespace-pre-wrap text-sm leading-relaxed"></pre>
+                </div>
+            </div>
+
+            <!-- Rodapé do Modal com Ações -->
+            <div
+                class="p-4 mt-auto bg-slate-900/50 border-t border-slate-700/50 rounded-b-2xl flex flex-wrap gap-3 justify-end">
+                <button id="modal-copy-btn" class="action-btn-modal bg-cyan-600 hover:bg-cyan-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                    <span>Copiar</span>
+                </button>
+                <button id="modal-chatgpt-btn" class="action-btn-modal bg-slate-600 hover:bg-slate-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256">
+                        <path fill="currentColor"
+                            d="M225.29 103.52a7.83 7.83 0 0 0-8.8-6.38l-40.15 4.65a7.81 7.81 0 0 0-7.22 6.37l-9.15 59.33a7.81 7.81 0 0 0 6.37 9.15l.31.05a7.82 7.82 0 0 0 8.84-6.37l9.15-59.33a7.81 7.81 0 0 0-6.37-9.15l40.15-4.65a7.83 7.83 0 0 0 6.87-3.32ZM215.1 35.75a93.72 93.72 0 0 0-174.2 0a7.79 7.79 0 0 0 1.94 10.44l33.81 27.2a7.77 7.77 0 0 0 9.53.26a42.24 42.24 0 0 1 52.84 0a7.77 7.77 0 0 0 9.53-.26l33.81-27.2a7.79 7.79 0 0 0 1.94-10.44Zm-14.8 6.11L182.8 56.4a57.92 57.92 0 0 0-73.89.29l-17.41-14.25a78.21 78.21 0 0 1 120.49 0ZM152.44 116.3a7.81 7.81 0 0 0-9.15-6.37l-59.33 9.15a7.81 7.81 0 0 0-6.37 9.15a7.83 7.83 0 0 0 9.15 6.37l59.33-9.15a7.81 7.81 0 0 0 6.37-9.15Zm-12.87 63.92-27.2 33.81a7.79 7.79 0 0 0 5.22 13.22a7.67 7.67 0 0 0 5.21-1.94l27.2-33.81a7.79 7.79 0 0 0-10.43-11.28Zm-71.18 22.53L41.2 220.25a7.79 7.79 0 0 0 10.43 11.28l27.2-33.81a7.79 7.79 0 0 0-11.28-10.43Z" />
+                    </svg>
+                    <span>Abrir no ChatGPT</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const promptsData = [
+            {
+                "id": 1,
+                "title": "Especialista em Automação",
+                "author": "@EXM7777",
+                "tags": ["produtividade", "n8n", "automação", "negócios"],
+                "text_en": "You are a **senior n8n automation architect**...",
+                "text_pt": "Você é um **arquiteto sênior de automação n8n**..."
+            },
+            {
+                "id": 2,
+                "title": "Gerador de Ideias de Conteúdo",
+                "author": "@ideacreator",
+                "tags": ["marketing", "conteúdo", "criatividade"],
+                "text_en": "You are a world-class content strategist...",
+                "text_pt": "Você é um estrategista de conteúdo de classe mundial..."
+            },
+            {
+                "id": 3,
+                "title": "Mentor de Carreira em Tech",
+                "author": "@techguide",
+                "tags": ["carreira", "tecnologia", "desenvolvimento"],
+                "text_en": "Act as a career mentor for a software developer...",
+                "text_pt": "Aja como um mentor de carreira para um desenvolvedor de software..."
+            }
+        ];
+
+        // Mapeamento de tags para cores de brilho
+        const tagColors = {
+            'produtividade': 'var(--glow-color-blue)',
+            'marketing': 'var(--glow-color-pink)',
+            'carreira': 'var(--glow-color-purple)',
+            'default': 'var(--glow-color-green)'
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- LÓGICA DA APLICAÇÃO DE PROMPTS ---
+            const promptGrid = document.getElementById('prompt-grid');
+            const searchInput = document.getElementById('search-input');
+            const noResultsDiv = document.getElementById('no-results');
+            const modal = document.getElementById('modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalText = document.getElementById('modal-text');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+            const langPtBtn = document.getElementById('lang-pt-btn');
+            const langEnBtn = document.getElementById('lang-en-btn');
+            const modalCopyBtn = document.getElementById('modal-copy-btn');
+            const modalChatGptBtn = document.getElementById('modal-chatgpt-btn');
+
+            let currentOpenPrompt = null;
+            let currentLang = 'pt';
+
+            function getGlowColor(tags) {
+                const firstTag = tags[0];
+                return tagColors[firstTag] || tagColors['default'];
+            }
+
+            function renderPrompts(prompts) {
+                promptGrid.innerHTML = '';
+                noResultsDiv.classList.toggle('hidden', prompts.length > 0);
+
+                prompts.forEach((prompt, index) => {
+                    const glowColor = getGlowColor(prompt.tags);
+                    const cardContainer = document.createElement('div');
+                    cardContainer.className = 'card-container';
+                    cardContainer.style.setProperty('--glow-color', glowColor);
+
+                    const card = document.createElement('div');
+                    card.className = 'prompt-card p-5 flex flex-col h-full';
+                    card.style.animationDelay = `${index * 50}ms`;
+
+                    card.innerHTML = `
+                    <div class="flex-grow">
+                        <h3 class="text-lg font-bold text-slate-100">${prompt.title}</h3>
+                        <p class="text-sm text-slate-400 mb-4">${prompt.author}</p>
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            ${prompt.tags.map(tag => `<span class="bg-slate-700/80 text-cyan-300 text-xs font-medium px-2.5 py-1 rounded-full border border-slate-600">${tag}</span>`).join('')}
+                        </div>
+                    </div>
+                    <div class="mt-auto pt-4 border-t border-slate-700/50 flex gap-3 justify-end">
+                        <button data-action="view" data-id="${prompt.id}" class="action-btn-card bg-slate-700 hover:bg-slate-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            <span>Visualizar</span>
+                        </button>
+                        <button data-action="copy" data-id="${prompt.id}" class="action-btn-card bg-cyan-600 hover:bg-cyan-500">
+                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            <span>Copiar</span>
+                        </button>
+                    </div>
+                `;
+                    cardContainer.appendChild(card);
+                    promptGrid.appendChild(cardContainer);
+                });
+
+                document.querySelectorAll('.action-btn-card, .action-btn-modal').forEach(btn => {
+                    btn.classList.add('flex', 'items-center', 'gap-2', 'text-sm', 'font-semibold', 'text-white', 'py-2', 'px-4', 'rounded-lg', 'transition-all', 'duration-200', 'transform', 'hover:scale-105', 'active:scale-95');
+                });
+            }
+
+            function filterPrompts() {
+                const searchTerm = searchInput.value.toLowerCase().trim();
+                const filtered = promptsData.filter(p =>
+                    p.title.toLowerCase().includes(searchTerm) ||
+                    p.author.toLowerCase().includes(searchTerm) ||
+                    p.tags.some(tag => tag.toLowerCase().includes(searchTerm))
+                );
+                renderPrompts(filtered);
+            }
+
+            function openModal(id) {
+                currentOpenPrompt = promptsData.find(p => p.id === id);
+                if (!currentOpenPrompt) return;
+                modalTitle.textContent = currentOpenPrompt.title;
+                updateModalText();
+                modal.classList.remove('pointer-events-none', 'opacity-0');
+                modal.classList.add('visible');
+            }
+
+            function closeModal() {
+                modal.classList.add('pointer-events-none', 'opacity-0');
+                modal.classList.remove('visible');
+                currentOpenPrompt = null;
+            }
+
+            function updateModalText() {
+                if (!currentOpenPrompt) return;
+                const isPt = currentLang === 'pt';
+                modalText.textContent = isPt ? currentOpenPrompt.text_pt : currentOpenPrompt.text_en;
+                langPtBtn.classList.toggle('bg-cyan-600', isPt);
+                langPtBtn.classList.toggle('text-white', isPt);
+                langPtBtn.classList.toggle('text-slate-300', !isPt);
+                langPtBtn.classList.toggle('hover:bg-slate-700', !isPt);
+                langEnBtn.classList.toggle('bg-cyan-600', !isPt);
+                langEnBtn.classList.toggle('text-white', !isPt);
+                langEnBtn.classList.toggle('text-slate-300', isPt);
+                langEnBtn.classList.toggle('hover:bg-slate-700', isPt);
+            }
+
+            function copyPrompt(id, buttonElement) {
+                const promptToCopy = promptsData.find(p => p.id === id);
+                if (!promptToCopy) return;
+                const textToCopy = (currentOpenPrompt && currentOpenPrompt.id === id)
+                    ? (currentLang === 'pt' ? promptToCopy.text_pt : promptToCopy.text_en)
+                    : promptToCopy.text_pt;
+                const textArea = document.createElement("textarea");
+                textArea.value = textToCopy;
+                textArea.style.position = "fixed";
+                textArea.style.left = "-9999px";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showCopyFeedback(buttonElement);
+                } catch (err) {
+                    console.error('Falha ao copiar texto: ', err);
+                }
+                document.body.removeChild(textArea);
+            }
+
+            function openInChatGPT(id) {
+                const promptToOpen = promptsData.find(p => p.id === id);
+                if (!promptToOpen) return;
+                const textToOpen = (currentOpenPrompt && currentOpenPrompt.id === id)
+                    ? (currentLang === 'pt' ? promptToOpen.text_pt : promptToOpen.text_en)
+                    : promptToOpen.text_pt;
+                const url = `https://chat.openai.com/?prompt=${encodeURIComponent(textToOpen)}`;
+                window.open(url, '_blank');
+            }
+
+            function showCopyFeedback(buttonElement) {
+                const originalContent = buttonElement.innerHTML;
+                buttonElement.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span>Copiado!</span>`;
+                buttonElement.disabled = true;
+                setTimeout(() => {
+                    buttonElement.innerHTML = originalContent;
+                    buttonElement.disabled = false;
+                }, 2000);
+            }
+
+            searchInput.addEventListener('input', filterPrompts);
+            promptGrid.addEventListener('click', (e) => {
+                const button = e.target.closest('button[data-action]');
+                if (!button) return;
+                const action = button.dataset.action;
+                const id = parseInt(button.dataset.id, 10);
+                if (action === 'view') openModal(id);
+                if (action === 'copy') copyPrompt(id, button);
+            });
+            closeModalBtn.addEventListener('click', closeModal);
+            modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+            langPtBtn.addEventListener('click', () => { currentLang = 'pt'; updateModalText(); });
+            langEnBtn.addEventListener('click', () => { currentLang = 'en'; updateModalText(); });
+            modalCopyBtn.addEventListener('click', (e) => { if (currentOpenPrompt) copyPrompt(currentOpenPrompt.id, e.currentTarget); });
+            modalChatGptBtn.addEventListener('click', () => { if (currentOpenPrompt) openInChatGPT(currentOpenPrompt.id); });
+            window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modal.classList.contains('visible')) closeModal(); });
+
+            // --- INICIALIZAÇÃO DA APLICAÇÃO DE PROMPTS ---
+            promptsData[1].text_pt = promptsData[1].text_pt || "Texto de exemplo para Gerador de Ideias.";
+            promptsData[1].text_en = promptsData[1].text_en || "Example text for Content Idea Generator.";
+            promptsData[2].text_pt = promptsData[2].text_pt || "Texto de exemplo para Mentor de Carreira.";
+            promptsData[2].text_en = promptsData[2].text_en || "Example text for Tech Career Mentor.";
+            renderPrompts(promptsData);
+
+
+            // --- LÓGICA DA ANIMAÇÃO DE PARTÍCULAS ---
+            const canvas = document.getElementById('particle-canvas');
+            const ctx = canvas.getContext('2d');
+            let particles = [];
+            let mouse = { x: null, y: null, radius: 150 };
+
+            function setupCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+
+            window.addEventListener('resize', () => {
+                setupCanvas();
+                initParticles();
+            });
+
+            window.addEventListener('mousemove', (event) => {
+                mouse.x = event.x;
+                mouse.y = event.y;
+            });
+
+            window.addEventListener('mouseout', () => {
+                mouse.x = null;
+                mouse.y = null;
+            });
+
+            class Particle {
+                constructor(x, y, directionX, directionY, size, color) {
+                    this.x = x;
+                    this.y = y;
+                    this.directionX = directionX;
+                    this.directionY = directionY;
+                    this.size = size;
+                    this.color = color;
+                }
+
+                draw() {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2, false);
+                    ctx.fillStyle = this.color;
+                    ctx.fill();
+                }
+
+                update() {
+                    if (this.x > canvas.width || this.x < 0) {
+                        this.directionX = -this.directionX;
+                    }
+                    if (this.y > canvas.height || this.y < 0) {
+                        this.directionY = -this.directionY;
+                    }
+
+                    // Interação com o mouse
+                    let dx = mouse.x - this.x;
+                    let dy = mouse.y - this.y;
+                    let distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance < mouse.radius) {
+                        if (mouse.x < this.x && this.x < canvas.width - this.size * 10) {
+                            this.x += 5;
+                        }
+                        if (mouse.x > this.x && this.x > this.size * 10) {
+                            this.x -= 5;
+                        }
+                        if (mouse.y < this.y && this.y < canvas.height - this.size * 10) {
+                            this.y += 5;
+                        }
+                        if (mouse.y > this.y && this.y > this.size * 10) {
+                            this.y -= 5;
+                        }
+                    }
+
+                    this.x += this.directionX;
+                    this.y += this.directionY;
+                    this.draw();
+                }
+            }
+
+            function initParticles() {
+                particles = [];
+                let numberOfParticles = (canvas.height * canvas.width) / 9000;
+                for (let i = 0; i < numberOfParticles; i++) {
+                    let size = (Math.random() * 2) + 1;
+                    let x = (Math.random() * ((innerWidth - size * 2) - (size * 2)) + size * 2);
+                    let y = (Math.random() * ((innerHeight - size * 2) - (size * 2)) + size * 2);
+                    let directionX = (Math.random() * .4) - .2;
+                    let directionY = (Math.random() * .4) - .2;
+                    let color = 'rgba(148, 163, 184, 0.5)'; // slate-400 com opacidade
+
+                    particles.push(new Particle(x, y, directionX, directionY, size, color));
+                }
+            }
+
+            function connectParticles() {
+                let opacityValue = 1;
+                for (let a = 0; a < particles.length; a++) {
+                    for (let b = a; b < particles.length; b++) {
+                        let distance = ((particles[a].x - particles[b].x) * (particles[a].x - particles[b].x))
+                            + ((particles[a].y - particles[b].y) * (particles[a].y - particles[b].y));
+                        if (distance < (canvas.width / 7) * (canvas.height / 7)) {
+                            opacityValue = 1 - (distance / 20000);
+                            ctx.strokeStyle = `rgba(0, 199, 255, ${opacityValue})`; // Cor ciano com opacidade variável
+                            ctx.lineWidth = 1;
+                            ctx.beginPath();
+                            ctx.moveTo(particles[a].x, particles[a].y);
+                            ctx.lineTo(particles[b].x, particles[b].y);
+                            ctx.stroke();
+                        }
+                    }
+                }
+            }
+
+            function animate() {
+                requestAnimationFrame(animate);
+                ctx.clearRect(0, 0, innerWidth, innerHeight);
+
+                for (let i = 0; i < particles.length; i++) {
+                    particles[i].update();
+                }
+                connectParticles();
+            }
+
+            setupCanvas();
+            initParticles();
+            animate();
+        });
+    </script>
+</body>
+
+</html>
